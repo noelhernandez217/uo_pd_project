@@ -26,6 +26,8 @@ export default function IncidentLog() {
   const [selected, setSelected] = useState<Incident | null>(null)
   const [filters, setFilters] = useState<IncidentFilters>({})
   const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set())
 
   const fetchIncidents = useCallback(async () => {
@@ -38,6 +40,16 @@ export default function IncidentLog() {
       setLoading(false)
     }
   }, [filters, search])
+
+  // Client-side date range filter applied on top of server filters
+  const filteredIncidents = useMemo(() => {
+    return incidents.filter((i) => {
+      const d = i.dateOccurred?.slice(0, 10) ?? ''
+      if (dateFrom && d < dateFrom) return false
+      if (dateTo   && d > dateTo)   return false
+      return true
+    })
+  }, [incidents, dateFrom, dateTo])
 
   useEffect(() => { fetchIncidents() }, [fetchIncidents])
 
@@ -59,9 +71,11 @@ export default function IncidentLog() {
       search && `Search: "${search}"`,
       filters.severity && `Severity: ${filters.severity}`,
       filters.status   && `Status: ${filters.status}`,
+      dateFrom && `From: ${dateFrom}`,
+      dateTo   && `To: ${dateTo}`,
     ].filter(Boolean).join(' · ') || 'All incidents'
 
-    const rows = incidents.map((i) => `
+    const rows = filteredIncidents.map((i) => `
       <tr>
         <td>${i.caseNumber || '—'}</td>
         <td>${i.nature}</td>
@@ -82,7 +96,7 @@ export default function IncidentLog() {
       tr:nth-child(even) td { background: #fafafa; }
     </style></head><body>
     <h1>Incident Log — ${config.campusName}</h1>
-    <p>Printed ${now.toLocaleString()} · ${filterDesc} · ${incidents.length} records</p>
+    <p>Printed ${now.toLocaleString()} · ${filterDesc} · ${filteredIncidents.length} records</p>
     <table>
       <thead><tr><th>Case #</th><th>Type</th><th>Location</th><th>Date</th><th>Severity</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -103,13 +117,13 @@ export default function IncidentLog() {
 
   const monthGroups = useMemo(() => {
     const groups: Record<string, Incident[]> = {}
-    incidents.forEach((i) => {
+    filteredIncidents.forEach((i) => {
       const key = i.dateOccurred?.slice(0, 7) ?? 'unknown'
       if (!groups[key]) groups[key] = []
       groups[key].push(i)
     })
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a))
-  }, [incidents])
+  }, [filteredIncidents])
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
@@ -149,7 +163,23 @@ export default function IncidentLog() {
           <option value="in-progress">In Progress</option>
           <option value="resolved">Resolved</option>
         </select>
-        <button onClick={() => { setFilters({}); setSearch('') }} className="text-sm text-gray-500 hover:text-gray-800 underline">Clear</button>
+        <div className="flex items-center gap-1.5 text-sm text-gray-500">
+          <span className="text-xs text-gray-400 font-medium">From</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <span className="text-xs text-gray-400 font-medium">To</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <button onClick={() => { setFilters({}); setSearch(''); setDateFrom(''); setDateTo('') }} className="text-sm text-gray-500 hover:text-gray-800 underline">Clear</button>
         <div className="ml-auto flex gap-3 items-center">
           <button onClick={() => setExpandedMonths(new Set(monthGroups.map(([k]) => k)))} className="text-sm text-green-700 underline">Expand all</button>
           <button onClick={() => setExpandedMonths(new Set())} className="text-sm text-gray-500 underline">Collapse all</button>
