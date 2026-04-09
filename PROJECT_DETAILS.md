@@ -48,6 +48,9 @@ Technical reference covering the full stack, every feature's implementation, and
 
 ### Known Gaps
 
+**Scraper parser is EPD-specific**
+The dispatch URL, campus center/radius, and city/state are all configurable. But `parseDispatchLog` in `scraper.js` assumes Eugene PD's exact HTML table structure and column order. A different school's PD feed would require either a configurable column map in `campus.config.js` or an AI-powered HTML parser (like the PDF import pipeline) that works with any format automatically.
+
 **Geocoding on Vercel (serverless timeout)**
 Geocoding runs as a background process on server startup. Vercel serverless functions time out after 10 seconds, so large batches never fully complete in a single invocation — pins fill in gradually across multiple cold starts instead. The fix is to move `geocodeAllPending` into a dedicated cron endpoint (`GET /api/geocode/run`) on a daily schedule, decoupling it from request handling entirely.
 

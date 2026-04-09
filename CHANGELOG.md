@@ -654,6 +654,18 @@ Replaced all emoji icons on the Import page (⬆️ 📄 🤖 💾 ✓) with cle
 
 ## Known Limitations & Future Work
 
+### Scraper parser is EPD-specific
+
+The live dispatch feed scraper (`backend/scraper.js`) is partially productizable but not fully. The configurable parts — dispatch URL, campus center/radius, city/state — work for any school. However, the HTML parser (`parseDispatchLog`) assumes Eugene PD's specific table structure: fixed column order (callTime, dispatchTime, nature, disposition, eventNumber, location, priority, caseNum), an EPD-specific checkbox offset, and all-caps abbreviation expansion (BLVD, AVE, ST, etc.).
+
+If another school's PD publishes a dispatch log in the same HTML table format as Eugene PD, the scraper works as-is. Most PDs use different formats or JSON APIs.
+
+**What needs to be done:** Two paths forward:
+1. **Configurable column map** — expose column index assignments in `campus.config.js` so each deployment can describe its PD's table structure without touching code
+2. **AI-powered parsing** — pass the raw HTML to GPT-4o and let it extract the structured data, the same way PDF import works. This would handle any format automatically with no configuration required and is the more productizable long-term approach.
+
+---
+
 ### Geocoding on Vercel: serverless timeout
 
 Geocoding runs as a background process triggered on server startup (`geocodeAllPending` in `app.js`). On Vercel, serverless functions time out after 10 seconds — the geocoding loop (1 req/sec via Nominatim rate limit) gets killed before completing for large batches. The current workaround is that map pins fill in gradually as Vercel re-invokes the function on each request, eventually geocoding all locations over multiple cold starts.
