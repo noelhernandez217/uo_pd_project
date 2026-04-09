@@ -12,7 +12,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e',
 }
 
-type SortOrder = 'severity' | 'oldest'
+type SortOrder = 'severity' | 'oldest' | 'newest'
 type SourceFilter = 'all' | 'epd_live' | 'uopd_csv' | 'imported' | 'manual'
 
 function timeAgo(dateStr: string | null): string {
@@ -215,9 +215,8 @@ export default function Dashboard() {
       if (!matchesSource(i, sourceFilter)) return false
       return true
     })
-    if (sortOrder === 'oldest') {
-      return q.sort((a, b) => (a.dateOccurred ?? '').localeCompare(b.dateOccurred ?? ''))
-    }
+    if (sortOrder === 'oldest') return q.sort((a, b) => (a.dateOccurred ?? '').localeCompare(b.dateOccurred ?? ''))
+    if (sortOrder === 'newest') return q.sort((a, b) => (b.dateOccurred ?? '').localeCompare(a.dateOccurred ?? ''))
     return q.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
   }, [incidents, showAllOpen, cutoff14, searchQuery, sourceFilter, sortOrder])
 
@@ -417,13 +416,16 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Sort toggle */}
-            <button
-              onClick={() => setSortOrder((o) => o === 'severity' ? 'oldest' : 'severity')}
-              className="text-[10px] font-semibold px-2 py-1 rounded-full border border-gray-300 text-gray-500 hover:border-green-400 transition-colors whitespace-nowrap"
+            {/* Sort dropdown */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+              className="text-[10px] font-semibold px-2 py-1 rounded-full border border-gray-300 text-gray-500 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors whitespace-nowrap bg-white"
             >
-              Sort: {sortOrder === 'severity' ? 'Severity' : 'Oldest First'}
-            </button>
+              <option value="severity">Sort: Severity</option>
+              <option value="oldest">Sort: Oldest First</option>
+              <option value="newest">Sort: Newest First</option>
+            </select>
           </div>
 
           {activeQueue.length === 0 ? (
