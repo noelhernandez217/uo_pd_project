@@ -7,6 +7,6 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/scraper/poll", "schedule": "*/10 * * * *" }
+    { "path": "/api/scraper/poll", "schedule": "0 8 * * *" }
   ]
 }
