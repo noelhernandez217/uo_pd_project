@@ -1,14 +1,24 @@
 const https = require('https')
 const { getConfig } = require('./campus.config')
+const { lookupAlias, normalizeLocation } = require('./locationAliases')
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function geocodeAddress(address) {
+  // 1. Check alias map first (intersections, vague entries)
+  const aliasResult = lookupAlias(address)
+  if (aliasResult !== undefined) {
+    return Promise.resolve(aliasResult) // may be null (skip) or {lat,lng}
+  }
+
+  // 2. Normalize the address before sending to Nominatim
+  const normalized = normalizeLocation(address)
+
   const { campusCity, campusState } = getConfig()
   return new Promise((resolve) => {
-    const query = encodeURIComponent(`${address}, ${campusCity}, ${campusState}`)
+    const query = encodeURIComponent(`${normalized}, ${campusCity}, ${campusState}`)
     const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`
     const options = {
       headers: { 'User-Agent': 'CampusSafe/1.0 (university campus safety tool)' },
