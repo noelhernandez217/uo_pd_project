@@ -14,6 +14,8 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 type SortOrder = 'severity' | 'oldest' | 'newest'
 type SourceFilter = 'all' | 'epd_live' | 'uopd_csv' | 'imported' | 'manual'
+type StatusFilter = 'all' | 'open' | 'acknowledged' | 'in-progress'
+type SeverityFilter = 'all' | 'critical' | 'high' | 'medium' | 'low'
 
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return '—'
@@ -57,6 +59,8 @@ export default function Dashboard() {
   // New feature state
   const [searchQuery, setSearchQuery]     = useState('')
   const [sourceFilter, setSourceFilter]   = useState<SourceFilter>('all')
+  const [statusFilter, setStatusFilter]   = useState<StatusFilter>('all')
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
   const [sortOrder, setSortOrder]         = useState<SortOrder>('severity')
   const [showQuickAdd, setShowQuickAdd]   = useState(false)
   const [quickAddForm, setQuickAddForm]   = useState({
@@ -213,12 +217,14 @@ export default function Dashboard() {
         if (!i.nature.toLowerCase().includes(q) && !(i.location || '').toLowerCase().includes(q)) return false
       }
       if (!matchesSource(i, sourceFilter)) return false
+      if (statusFilter !== 'all' && i.status !== statusFilter) return false
+      if (severityFilter !== 'all' && i.severity !== severityFilter) return false
       return true
     })
     if (sortOrder === 'oldest') return q.sort((a, b) => (a.dateOccurred ?? '').localeCompare(b.dateOccurred ?? ''))
     if (sortOrder === 'newest') return q.sort((a, b) => (b.dateOccurred ?? '').localeCompare(a.dateOccurred ?? ''))
     return q.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
-  }, [incidents, showAllOpen, cutoff14, searchQuery, sourceFilter, sortOrder])
+  }, [incidents, showAllOpen, cutoff14, searchQuery, sourceFilter, statusFilter, severityFilter, sortOrder])
 
   const stalledCount = useMemo(() =>
     incidents.filter((i) =>
@@ -412,6 +418,40 @@ export default function Dashboard() {
                   }`}
                 >
                   {SOURCE_LABELS[s]}
+                </button>
+              ))}
+            </div>
+
+            {/* Status filter pills */}
+            <div className="flex gap-1 flex-wrap">
+              {(['all','open','acknowledged','in-progress'] as StatusFilter[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors ${
+                    statusFilter === s
+                      ? 'bg-green-700 text-white border-green-700'
+                      : 'bg-white text-gray-500 border-gray-300 hover:border-green-400'
+                  }`}
+                >
+                  {s === 'all' ? 'All Statuses' : s === 'in-progress' ? 'In Progress' : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Severity filter pills */}
+            <div className="flex gap-1 flex-wrap">
+              {(['all','critical','high','medium','low'] as SeverityFilter[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSeverityFilter(s)}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors ${
+                    severityFilter === s
+                      ? 'bg-green-700 text-white border-green-700'
+                      : 'bg-white text-gray-500 border-gray-300 hover:border-green-400'
+                  }`}
+                >
+                  {s === 'all' ? 'All Severities' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
             </div>
