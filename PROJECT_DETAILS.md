@@ -684,6 +684,45 @@ To monitor actual usage, visit **console.anthropic.com → Usage** for a real-ti
 
 ---
 
+## Broader Responder Ecosystem
+
+### Campus safety is not just police
+
+The current tool is built around a police dispatcher's workflow — severity-first queue, EPD live feed, status triage. But "campus safety team" is broader than UOPD. At a university like UO, multiple responder types interact with incident data:
+
+| Responder | Primary incidents | Current coverage |
+|---|---|---|
+| UOPD Dispatchers | All incidents, active triage | ✅ Full — core use case |
+| Eugene Springfield Fire (ESF) | Fire, EMS, medical, hazmat | ⚠️ Data available, not yet integrated |
+| UO Emergency Medical Services (UOEMS) | Medical calls, overdoses, injuries | ⚠️ No public feed |
+| Student Conduct / Dean of Students | Noise, alcohol, behavioral incidents | ⚠️ No public feed |
+| Facilities / Maintenance | Hazards, infrastructure, environmental | ⚠️ No public feed |
+| Residential Life (RAs) | Dorm incidents before police are called | ⚠️ No public feed |
+| Mental Health / Crisis Team | Behavioral health calls | ⚠️ No public feed |
+
+### Eugene Springfield Fire — designed extension point
+
+Eugene Springfield Fire publishes a public CAD log at `https://coeapps.eugene-or.gov/ruralfirecad` — the same city portal as the EPD dispatch log. The page structure is a similar HTML table with columns: Event Number, Agency, Dispatch Time, Area, Location, City, Description.
+
+**Why it hasn't been built yet:**
+- The fire CAD has no disposition column, so the auto-resolve logic (empty disposition = in-progress, filled = resolved) that makes EPD data useful doesn't apply
+- Near-campus fire/EMS call volume is low enough that it wouldn't materially change the demo
+- The core dispatcher workflow is complete and adding a half-finished fire feed introduces risk before submission
+
+**Why it's worth building next:**
+- Fire and EMS are the original first responders — a campus safety tool that only tracks police is incomplete by definition
+- A structure fire, gas leak, or mass casualty event on campus is exactly the scenario where a dispatcher needs everything in one view
+- The scraper architecture already supports multiple sources (`source` field on every incident). Adding ESF would require: a second scraper (`fireScraper.js`), one new `source` value (`esf_live`), and a new option in the source filter dropdown — no changes to the data model, API, or database schema
+
+**Implementation path:**
+1. Create `backend/fireScraper.js` following the same pattern as `scraper.js`
+2. Add `pdFireUrl` and `pdFireEnabled` to `campus.config.js`
+3. Wire `startFirePolling()` into `app.js` alongside `startPolling()`
+4. Add `POST /api/scraper/fire/poll` for manual triggering
+5. Add `esf_live` to the source filter dropdown on the Dashboard and Incident Log
+
+---
+
 ## Known Limitations
 
 - **No real-time resolution feedback:** The UOPD Clery log is a static compliance report; EPD dispatch does not expose disposition data. Incidents must be manually resolved in the UI. A CAD system integration would be required for automatic resolution.
