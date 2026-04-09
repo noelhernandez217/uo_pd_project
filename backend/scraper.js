@@ -106,6 +106,22 @@ async function pollEPDLog() {
 
     console.log(`[EPD Scraper] Found ${rows.length} incidents in today's log.`)
 
+    // Re-check existing in-progress EPD incidents — if disposition now filled, clear them
+    for (const row of rows) {
+      if (row.disposition.trim() === '') continue // still active
+      const active = await db.get(
+        `SELECT id FROM incidents WHERE event_number = ? AND status = 'in-progress'`,
+        [row.eventNumber]
+      )
+      if (active) {
+        await db.run(
+          `UPDATE incidents SET status = 'open', disposition = ? WHERE id = ?`,
+          [row.disposition, active.id]
+        )
+        console.log(`[EPD Scraper] Cleared in-progress incident #${active.id} (${row.disposition})`)
+      }
+    }
+
     for (const row of rows) {
       const exists = await db.get('SELECT id FROM incidents WHERE event_number = ?', [row.eventNumber])
       if (exists) continue
@@ -140,12 +156,15 @@ async function pollEPDLog() {
 
       const classification = await classifyWithClaude(row.nature, row.disposition, row.location)
 
+      // Empty disposition = units still responding; filled = call cleared
+      const initialStatus = row.disposition.trim() === '' ? 'in-progress' : 'open'
+
       await db.run(`
         INSERT INTO incidents
           (nature, case_number, date_occurred, date_reported, location, disposition,
            severity, ai_summary, ai_recommendation, status,
            campus, source, event_number, lat, lng, distance_from_campus)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, 'epd_live', ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'epd_live', ?, ?, ?, ?)
       `, [
         row.nature,
         row.caseNum || row.eventNumber,
@@ -156,6 +175,7 @@ async function pollEPDLog() {
         classification.severity,
         classification.aiSummary,
         classification.aiRecommendation,
+        initialStatus,
         getConfig().campusName,
         row.eventNumber,
         coords.lat,
