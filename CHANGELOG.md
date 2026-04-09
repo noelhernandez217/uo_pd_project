@@ -575,6 +575,28 @@ When an incident is submitted via the manual form, geocoding runs asynchronously
 
 ---
 
+## v2.6 — Dashboard Dispatcher Enhancements & Incident Log Print/Filter
+
+### What was added
+
+**Dashboard — dispatcher workflow features**
+- **Search bar** — live text filter across incident nature, location, and case number in the active queue
+- **Source filter pills** — filter queue by data source: All / EPD Live / UOPD CSV / Imported / Manual
+- **Age sort toggle** — switch between severity-first (default) and oldest-first ordering so dispatchers can catch incidents that have been sitting too long
+- **Acknowledge button** — one-click transition from `open` → `acknowledged` (yellow badge) directly on queue cards, giving dispatchers a way to claim an incident without fully opening it
+- **Quick-add modal** — "Log Incident" button opens a slide-in form to submit a new incident without leaving the dashboard; on success the new card appears in the queue immediately
+- **Print shift summary** — generates a formatted HTML report of all incidents from the past 8 hours, opens in a new window, and triggers the browser print dialog
+
+**Incident Log — date range filter and print**
+- **From/To date inputs** — client-side date range filter applied on top of existing server-side severity/status filters; month groupings update live as dates change
+- **Clear button** now also resets date range fields
+- **Print button** — generates a formatted HTML report of the currently filtered view (all active filters — search, severity, status, date range — reflected in the report header and record count)
+
+### Design rationale
+The Dashboard additions were driven by a dispatcher's workflow: acknowledge to claim, search to find, print to hand off. The source filter addresses the mixed-provenance nature of the data (EPD live feed vs. historical CSV vs. imports). The Incident Log print feature allows exporting any filtered slice (e.g., all critical incidents last month) for documentation or supervisor review.
+
+---
+
 ## v2.5 — EPD Auto-Resolve via Disposition Feed
 
 ### What changed
