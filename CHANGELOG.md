@@ -575,6 +575,83 @@ When an incident is submitted via the manual form, geocoding runs asynchronously
 
 ---
 
+## v2.5 — EPD Auto-Resolve via Disposition Feed
+
+### What changed
+
+**Disposition-driven map pin lifecycle**
+The EPD scraper now reads the `disposition` field from the feed to automatically drive incident status — no dispatcher action required for live EPD incidents:
+
+- **New incident, empty disposition** → inserted as `in-progress` → purple pulsing pin on map (units responding)
+- **New incident, disposition already filled** → inserted as `resolved` → muted gray pin (call already cleared before we polled)
+- **Re-poll: previously in-progress incident now has a disposition** → status set to `resolved`, `resolved_at` timestamp written → pin changes to gray automatically
+
+The map auto-refreshes every 15 seconds, so pin transitions happen without a page reload.
+
+### Design rationale
+The EPD feed's disposition field is the authoritative signal for whether a call is active or cleared. Empty = still on scene. Filled (CLR, GOA, UTL, ARR, etc.) = units have left. Wiring this directly to the `status` column means the dispatcher map reflects real-world EPD state without anyone having to touch the dashboard.
+
+---
+
+## v2.4 — Location Alias Map & Address Normalizer
+
+### What was added
+
+**`backend/locationAliases.js`**
+A new module with two responsibilities:
+- **`KNOWN_COORDS`** — hardcoded lat/lng for Eugene/UO-area intersections and vague entries (e.g. `E 15th Ave/University St`, `Off Campus Location`) that Nominatim cannot resolve on its own. Covers all 15 intersection formats and 2 vague entries found in the UOPD Clery log.
+- **`normalizeLocation()`** — fixes abbreviated address strings before sending to Nominatim: strips "Blk" block prefix, expands bare street names missing their type suffix (`Kincaid` → `Kincaid St`, `Franklin` → `Franklin Blvd`, etc.), and converts slash-format intersections to `&` format which Nominatim handles better.
+- **`lookupAlias()`** — returns `{lat,lng}` if address is in the alias map, `null` if it's a known-unresolvable entry, or `undefined` if not in the map (proceed to Nominatim).
+
+**`backend/geocoder.js` updated**
+`geocodeAddress()` now checks the alias map first, then normalizes the address, then falls through to Nominatim. Result: 287 of 290 incidents geocoded (the remaining 3 are genuinely unresolvable entries like "General Location").
+
+**Bulk geocoding run locally**
+After deploying the alias map, `geocodeAllPending` was run directly against Supabase from a local script, bypassing Vercel's 10-second serverless timeout. All 287 geocodable incidents now have coordinates in the database.
+
+### Why
+The map was showing only ~160 of 290 incidents. Root cause was two separate issues: (1) Vercel's serverless timeout killing the geocoding background process after ~10 locations per cold start, and (2) Nominatim failing on slash-format intersections and abbreviated addresses. The alias map fixes (2); running locally fixed (1).
+
+---
+
+## v2.3 — Manual Incident Entry on Import Page
+
+### What changed
+Added a **"Report Single Incident"** section to the bottom of the Import page (`/import`). Dispatchers can now log a single incident by typing directly — no need to create a CSV.
+
+**Form fields:** Incident Type (required), Location (required), Date & Time Occurred, Description.
+
+On submission, POSTs to `POST /api/incidents` — same pipeline as before. AI classification and geocoding run automatically in the background. A success confirmation appears inline for 4 seconds after submit.
+
+### Why
+The manual submission form was removed in v0.9 in favor of bulk import. This restores single-incident entry as a secondary section on the Import page rather than a dedicated nav page — keeping the nav focused on the dispatcher's primary workflow while still covering the edge case of on-site incidents not in any feed.
+
+---
+
+## v2.2 — OpenAI SDK Swap & Vercel Fixes
+
+### What changed
+
+**AI provider switched from Anthropic to OpenAI**
+- `backend/classifier.js` — replaced `@anthropic-ai/sdk` with `openai`, switched model from `claude-haiku-4-5` to `gpt-4o-mini` for incident classification
+- `backend/routes/import.js` — replaced Anthropic document content block (PDF extraction) with OpenAI `gpt-4o` vision call
+- `backend/package.json` and root `package.json` — removed `@anthropic-ai/sdk`, added `openai ^4.0.0`
+- `backend/.env` — renamed `ANTHROPIC_API_KEY` to `OPENAI_API_KEY`
+
+**`better-sqlite3` moved to `devDependencies`**
+The native C++ addon can't compile on Vercel's build environment. Since `DATABASE_URL` is always set in production (Supabase), the SQLite branch never runs on Vercel. Moving it to `devDependencies` prevents build failures without affecting local development.
+
+**Vercel cron schedule fixed**
+Changed scraper cron from `*/10 * * * *` to `0 8 * * *` — Vercel Hobby plan only allows daily crons. Frequent polling handled externally via cron-job.org.
+
+**Node.js engine updated**
+Root `package.json` engine requirement updated from `18.x` to `24.x` to match Vercel's current supported runtime.
+
+**Import page icons**
+Replaced all emoji icons on the Import page (⬆️ 📄 🤖 💾 ✓) with clean Heroicons SVGs for a more polished, production-ready appearance.
+
+---
+
 ## Known Limitations & Future Work
 
 ### Geocoding on Vercel: serverless timeout
