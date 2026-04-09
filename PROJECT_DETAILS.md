@@ -46,8 +46,12 @@ Technical reference covering the full stack, every feature's implementation, and
 | Productizability | ✅ Campus config layer fully externalized in v1.3 |
 | Polish and UX | ✅ Animations, skeleton loading, frosted glass, toast notifications added in v1.2 |
 
-### Known Gap
+### Known Gaps
 
+**Geocoding on Vercel (serverless timeout)**
+Geocoding runs as a background process on server startup. Vercel serverless functions time out after 10 seconds, so large batches never fully complete in a single invocation — pins fill in gradually across multiple cold starts instead. The fix is to move `geocodeAllPending` into a dedicated cron endpoint (`GET /api/geocode/run`) on a daily schedule, decoupling it from request handling entirely.
+
+**Manual incident submission**
 The one feature listed in the original requirements that is not fully present is a **single-incident manual submission form**. The decision to replace it with bulk Import was deliberate — dispatchers don't type individual incident reports during a shift, and the live EPD feed covers real-time data entry automatically. However, the spec lists it as a key feature and it is step 1 of the core product loop. The recommended fix is a lightweight "Report Incident" modal accessible from the Dashboard, which would satisfy the requirement without restoring a dedicated page.
 
 ---

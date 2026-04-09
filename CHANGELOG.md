@@ -575,7 +575,17 @@ When an incident is submitted via the manual form, geocoding runs asynchronously
 
 ---
 
-## Known Limitations
+## Known Limitations & Future Work
+
+### Geocoding on Vercel: serverless timeout
+
+Geocoding runs as a background process triggered on server startup (`geocodeAllPending` in `app.js`). On Vercel, serverless functions time out after 10 seconds — the geocoding loop (1 req/sec via Nominatim rate limit) gets killed before completing for large batches. The current workaround is that map pins fill in gradually as Vercel re-invokes the function on each request, eventually geocoding all locations over multiple cold starts.
+
+**What needs to be done:** Move `geocodeAllPending` out of the startup path and into a dedicated cron endpoint (e.g. `GET /api/geocode/run`) called on a daily schedule. This decouples geocoding from request latency, survives Vercel's timeout limit for daily incremental batches, and makes the process observable (can return progress counts). For the initial bulk geocode of existing data, the endpoint can be called manually once from a local script or curl.
+
+---
+
+## Known Limitations (existing)
 
 ### No real-time resolution feedback from UOPD or EPD
 
