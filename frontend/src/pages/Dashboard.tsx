@@ -147,10 +147,19 @@ export default function Dashboard() {
 
   function printShiftSummary() {
     const now = new Date()
-    const cutoff = new Date(now.getTime() - 8 * 3600000)
-    const shiftIncidents = incidents.filter((i) => i.dateOccurred && new Date(i.dateOccurred) >= cutoff)
-    const open     = shiftIncidents.filter((i) => i.status === 'open' || i.status === 'acknowledged' || i.status === 'in-progress')
-    const resolved = shiftIncidents.filter((i) => i.status === 'resolved')
+    // Print what the dispatcher is currently looking at: active queue as filtered,
+    // plus resolved incidents matching the same source/search filters
+    const open = activeQueue
+    const resolved = incidents.filter((i) => {
+      if (i.status !== 'resolved') return false
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        if (!i.nature.toLowerCase().includes(q) && !(i.location || '').toLowerCase().includes(q)) return false
+      }
+      if (!matchesSource(i, sourceFilter)) return false
+      return true
+    })
+    const shiftIncidents = [...open, ...resolved]
 
     const row = (i: Incident) => `
       <tr>
