@@ -115,10 +115,10 @@ async function pollEPDLog() {
       )
       if (active) {
         await db.run(
-          `UPDATE incidents SET status = 'open', disposition = ? WHERE id = ?`,
-          [row.disposition, active.id]
+          `UPDATE incidents SET status = 'resolved', disposition = ?, resolved_at = ? WHERE id = ?`,
+          [row.disposition, new Date().toISOString(), active.id]
         )
-        console.log(`[EPD Scraper] Cleared in-progress incident #${active.id} (${row.disposition})`)
+        console.log(`[EPD Scraper] Resolved in-progress incident #${active.id} (${row.disposition})`)
       }
     }
 
@@ -156,8 +156,8 @@ async function pollEPDLog() {
 
       const classification = await classifyWithClaude(row.nature, row.disposition, row.location)
 
-      // Empty disposition = units still responding; filled = call cleared
-      const initialStatus = row.disposition.trim() === '' ? 'in-progress' : 'open'
+      // Empty disposition = units still responding; filled = call cleared/resolved
+      const initialStatus = row.disposition.trim() === '' ? 'in-progress' : 'resolved'
 
       await db.run(`
         INSERT INTO incidents
