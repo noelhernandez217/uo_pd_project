@@ -1,7 +1,8 @@
 const colors = {
-  open: 'bg-blue-100 text-blue-800 border border-blue-300',
+  open:          'bg-blue-100 text-blue-800 border border-blue-300',
+  acknowledged:  'bg-yellow-100 text-yellow-800 border border-yellow-300',
   'in-progress': 'bg-purple-100 text-purple-800 border border-purple-300',
-  resolved: 'bg-gray-100 text-gray-600 border border-gray-300',
+  resolved:      'bg-gray-100 text-gray-600 border border-gray-300',
 }
 
 export default function StatusBadge({ status }: { status: string }) {

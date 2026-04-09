@@ -13,7 +13,7 @@ export interface Incident {
   severity: 'low' | 'medium' | 'high' | 'critical'
   aiSummary: string
   aiRecommendation: string
-  status: 'open' | 'in-progress' | 'resolved'
+  status: 'open' | 'acknowledged' | 'in-progress' | 'resolved'
   campus: string
   createdAt: string
   resolvedAt?: string

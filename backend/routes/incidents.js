@@ -105,7 +105,7 @@ router.post('/', async (req, res) => {
 // PATCH /api/incidents/:id/status
 router.patch('/:id/status', async (req, res) => {
   const { status } = req.body
-  const validStatuses = ['open', 'in-progress', 'resolved']
+  const validStatuses = ['open', 'acknowledged', 'in-progress', 'resolved']
 
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` })
