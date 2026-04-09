@@ -1,4 +1,4 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 
 function severityFromHeuristic(nature) {
   const n = (nature || '').toLowerCase();
@@ -33,15 +33,14 @@ function classifyHeuristic(nature, disposition) {
 }
 
 async function classifyWithClaude(nature, description, location) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    const fallback = classifyHeuristic(nature, description);
-    return fallback;
+  if (!process.env.OPENAI_API_KEY) {
+    return classifyHeuristic(nature, description);
   }
 
   try {
-    const client = new Anthropic();
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const client = new OpenAI();
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 256,
       messages: [
         {
@@ -68,10 +67,10 @@ Severity guide:
       ],
     });
 
-    const text = message.content[0].text.trim();
+    const text = response.choices[0].message.content.trim();
     return JSON.parse(text);
   } catch (err) {
-    console.error('Claude classification failed, using heuristic fallback:', err.message);
+    console.error('OpenAI classification failed, using heuristic fallback:', err.message);
     return classifyHeuristic(nature, description);
   }
 }
