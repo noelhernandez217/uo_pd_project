@@ -1,0 +1,23 @@
+{
+  "name": "campus-safety-backend",
+  "version": "1.0.0",
+  "description": "Campus Safety Incident Management API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^2.1.1",
+    "pg": "^8.20.0"
+  }
+}
