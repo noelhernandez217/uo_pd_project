@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const multer = require('multer')
 const { parse: parseCSV } = require('csv-parse/sync')
-const Anthropic = require('@anthropic-ai/sdk')
+const OpenAI = require('openai')
 const db = require('../db')
 const { classifyHeuristic, classifyWithClaude } = require('../classifier')
 const { geocodeAddress } = require('../geocoder')
@@ -42,18 +42,17 @@ function parseCSVRows(buffer) {
 }
 
 async function parsePDFRows(buffer) {
-  if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY required for PDF import')
+  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for PDF import')
 
-  const client = new Anthropic()
+  const client = new OpenAI()
   const base64PDF = buffer.toString('base64')
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o',
     max_tokens: 4096,
     messages: [{
       role: 'user',
       content: [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64PDF } },
         { type: 'text', text: `Extract all incident records from this campus safety / police dispatch log PDF.
 Return ONLY a valid JSON array — no markdown, no explanation, no code fences.
 Each object must have exactly these fields:
@@ -67,11 +66,12 @@ Each object must have exactly these fields:
 }
 Skip page headers, footers, totals rows, and any non-incident content.
 Return only the JSON array.` },
+        { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64PDF}` } },
       ],
     }],
   })
 
-  const text = message.content[0].text.trim().replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim()
+  const text = response.choices[0].message.content.trim().replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim()
   const rows = JSON.parse(text)
 
   return rows
