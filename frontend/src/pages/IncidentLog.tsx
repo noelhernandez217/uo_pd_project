@@ -3,6 +3,7 @@ import { Incident, getIncidents, IncidentFilters } from '../api/incidents'
 import SeverityBadge from '../components/SeverityBadge'
 import StatusBadge from '../components/StatusBadge'
 import IncidentDetail from '../components/IncidentDetail'
+import { useCampus } from '../context/CampusContext'
 
 const SEVERITY_COLORS: Record<string, string> = {
   critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e',
@@ -19,6 +20,7 @@ function monthLabel(key: string) {
 }
 
 export default function IncidentLog() {
+  const { config } = useCampus()
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Incident | null>(null)
@@ -49,6 +51,46 @@ export default function IncidentLog() {
   function handleStatusChange(updated: Incident) {
     setIncidents((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
     setSelected(updated)
+  }
+
+  function printLog() {
+    const now = new Date()
+    const filterDesc = [
+      search && `Search: "${search}"`,
+      filters.severity && `Severity: ${filters.severity}`,
+      filters.status   && `Status: ${filters.status}`,
+    ].filter(Boolean).join(' · ') || 'All incidents'
+
+    const rows = incidents.map((i) => `
+      <tr>
+        <td>${i.caseNumber || '—'}</td>
+        <td>${i.nature}</td>
+        <td>${i.location || '—'}</td>
+        <td>${i.dateOccurred?.slice(0, 16) || '—'}</td>
+        <td>${i.severity.toUpperCase()}</td>
+        <td>${i.status}</td>
+      </tr>`).join('')
+
+    const html = `<!DOCTYPE html><html><head><title>Incident Log — ${config.campusName}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 24px; font-size: 12px; }
+      h1 { font-size: 17px; margin-bottom: 4px; }
+      p { color: #666; margin: 0 0 14px; font-size: 12px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { text-align: left; font-size: 10px; text-transform: uppercase; color: #999; padding: 4px 8px; border-bottom: 2px solid #e5e7eb; }
+      td { padding: 4px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+      tr:nth-child(even) td { background: #fafafa; }
+    </style></head><body>
+    <h1>Incident Log — ${config.campusName}</h1>
+    <p>Printed ${now.toLocaleString()} · ${filterDesc} · ${incidents.length} records</p>
+    <table>
+      <thead><tr><th>Case #</th><th>Type</th><th>Location</th><th>Date</th><th>Severity</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </body></html>`
+
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.print() }
   }
 
   function toggleMonth(key: string) {
@@ -108,9 +150,19 @@ export default function IncidentLog() {
           <option value="resolved">Resolved</option>
         </select>
         <button onClick={() => { setFilters({}); setSearch('') }} className="text-sm text-gray-500 hover:text-gray-800 underline">Clear</button>
-        <div className="ml-auto flex gap-3">
+        <div className="ml-auto flex gap-3 items-center">
           <button onClick={() => setExpandedMonths(new Set(monthGroups.map(([k]) => k)))} className="text-sm text-green-700 underline">Expand all</button>
           <button onClick={() => setExpandedMonths(new Set())} className="text-sm text-gray-500 underline">Collapse all</button>
+          <button
+            onClick={printLog}
+            disabled={loading || incidents.length === 0}
+            className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+            </svg>
+            Print
+          </button>
         </div>
       </div>
 
