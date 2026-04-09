@@ -1,7 +1,13 @@
 import { useState, useRef, useCallback } from 'react'
+import { createIncident } from '../api/incidents'
 
 type FileType = 'csv' | 'pdf'
 type Stage = 'upload' | 'previewing' | 'preview' | 'importing' | 'done'
+
+function toLocalDatetimeValue(d: Date) {
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
 
 interface PreviewRow {
   nature: string
@@ -84,6 +90,34 @@ export default function ImportIncidents() {
     } catch (err: any) {
       setError(err.message)
       setStage('preview')
+    }
+  }
+
+  // ── Manual entry state ──────────────────────────────────────────────────
+  const [manualForm, setManualForm] = useState({
+    nature: '',
+    location: '',
+    dateOccurred: toLocalDatetimeValue(new Date()),
+    description: '',
+  })
+  const [manualSubmitting, setManualSubmitting] = useState(false)
+  const [manualSuccess, setManualSuccess] = useState(false)
+  const [manualError, setManualError] = useState('')
+
+  async function submitManual(e: React.FormEvent) {
+    e.preventDefault()
+    if (!manualForm.nature.trim() || !manualForm.location.trim()) return
+    setManualSubmitting(true)
+    setManualError('')
+    try {
+      await createIncident(manualForm)
+      setManualSuccess(true)
+      setManualForm({ nature: '', location: '', dateOccurred: toLocalDatetimeValue(new Date()), description: '' })
+      setTimeout(() => setManualSuccess(false), 4000)
+    } catch (err: any) {
+      setManualError(err.message || 'Submission failed')
+    } finally {
+      setManualSubmitting(false)
     }
   }
 
@@ -276,6 +310,89 @@ export default function ImportIncidents() {
           </button>
         </div>
       )}
+      {/* ── Manual entry ──────────────────────────────────────────────── */}
+      <div className="mt-12 pt-10 border-t border-gray-200">
+        <div className="mb-5">
+          <h2 className="text-base font-bold text-gray-900">Report Single Incident</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Log an individual incident manually. AI classification and geocoding run automatically after submission.
+          </p>
+        </div>
+
+        <form onSubmit={submitManual} className="space-y-4 bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                Incident Type <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Theft, Suspicious Activity, Medical"
+                value={manualForm.nature}
+                onChange={(e) => setManualForm((f) => ({ ...f, nature: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                Location <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 1451 Agate St"
+                value={manualForm.location}
+                onChange={(e) => setManualForm((f) => ({ ...f, location: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+              />
+            </div>
+
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                Date &amp; Time Occurred
+              </label>
+              <input
+                type="datetime-local"
+                value={manualForm.dateOccurred}
+                onChange={(e) => setManualForm((f) => ({ ...f, dateOccurred: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                Description
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Additional details about the incident..."
+                value={manualForm.description}
+                onChange={(e) => setManualForm((f) => ({ ...f, description: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              />
+            </div>
+          </div>
+
+          {manualError && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{manualError}</p>
+          )}
+          {manualSuccess && (
+            <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+              Incident submitted — AI classification running in background.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={manualSubmitting || !manualForm.nature.trim() || !manualForm.location.trim()}
+            className="w-full bg-green-700 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-green-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {manualSubmitting ? 'Submitting...' : 'Submit Incident'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
