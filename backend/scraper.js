@@ -138,21 +138,24 @@ async function pollEPDLog() {
         await new Promise((r) => setTimeout(r, 1100))
       }
 
-      if (!coords) {
-        console.log(`[EPD Scraper] Could not geocode (skipping): ${row.location}`)
-        continue
+      // If geocoding succeeded but outside campus radius, skip (city-wide call, not relevant)
+      // If geocoding failed, save anyway without coords — EPD uses intersection abbreviations
+      // (e.g. "E 15TH AVE/UNIVERSITY ST") that Nominatim can't always resolve. The raw
+      // address is preserved in the location field so dispatchers still have it.
+      let distance = null
+      if (coords) {
+        distance = distanceFromCampus(coords.lat, coords.lng)
+        if (!isNearCampus(coords.lat, coords.lng)) {
+          const distanceMiles = (distance / 1609.34).toFixed(2)
+          const radiusMiles = ((parseFloat(process.env.CAMPUS_RADIUS_METERS) || 1200) / 1609.34).toFixed(2)
+          console.log(`[EPD Scraper] Outside radius — ${distanceMiles} mi from campus (limit ${radiusMiles} mi): ${row.location}`)
+          continue
+        }
+        const distanceMiles = (distance / 1609.34).toFixed(2)
+        console.log(`[EPD Scraper] New campus-area incident (${distanceMiles} mi): ${row.nature} @ ${row.location}`)
+      } else {
+        console.log(`[EPD Scraper] Geocoding failed — saving without coords: ${row.location}`)
       }
-
-      const distance = distanceFromCampus(coords.lat, coords.lng)
-      const distanceMiles = (distance / 1609.34).toFixed(2)
-
-      if (!isNearCampus(coords.lat, coords.lng)) {
-        const radiusMiles = ((parseFloat(process.env.CAMPUS_RADIUS_METERS) || 1200) / 1609.34).toFixed(2)
-        console.log(`[EPD Scraper] Outside radius — ${distanceMiles} mi from campus (limit ${radiusMiles} mi): ${row.location}`)
-        continue
-      }
-
-      console.log(`[EPD Scraper] New campus-area incident (${distanceMiles} mi): ${row.nature} @ ${row.location}`)
 
       const classification = await classifyWithClaude(row.nature, row.disposition, row.location)
 
@@ -178,8 +181,8 @@ async function pollEPDLog() {
         initialStatus,
         getConfig().campusName,
         row.eventNumber,
-        coords.lat,
-        coords.lng,
+        coords?.lat ?? null,
+        coords?.lng ?? null,
         distance,
       ])
 
