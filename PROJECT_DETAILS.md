@@ -54,6 +54,22 @@ The dispatch URL, campus center/radius, and city/state are all configurable. But
 **Geocoding on Vercel (serverless timeout)**
 Geocoding runs as a background process on server startup. Vercel serverless functions time out after 10 seconds, so large batches never fully complete in a single invocation — pins fill in gradually across multiple cold starts instead. The fix is to move `geocodeAllPending` into a dedicated cron endpoint (`GET /api/geocode/run`) on a daily schedule, decoupling it from request handling entirely.
 
+**Multi-tenancy (multiple campuses in one instance)**
+The current build is **single-instance by design** — one deployment serves one campus. This is analogous to how WordPress works: each university runs their own instance with their own database, settings, and data. Switching the campus in Settings overwrites the existing configuration rather than adding a second profile alongside it.
+
+This is a deliberate architectural decision for the current scope. The realistic deployment model for a tool like this is one instance per institution — each campus safety team manages their own data, their own scraper, and their own settings without visibility into another school's incidents.
+
+**Why multi-tenancy is a future consideration, not a current gap:**
+A SaaS multi-tenant model (one instance, many schools) introduces significant complexity — data isolation between tenants, per-campus scraper scheduling, billing, and access control. That's a product-level decision, not just a technical one.
+
+**Plan to implement if needed:**
+1. **Database** — add a `campus_id` UUID column to the `incidents`, `incident_notes`, and `settings` tables. Each campus gets a row in a new `campuses` table with its own config.
+2. **Backend** — `campus.config.js` refactored to support multiple cached configs keyed by `campus_id`. All SQL queries in every route gain a `WHERE campus_id = ?` scope. The scraper runs a separate poll loop per enabled campus.
+3. **Auth layer** — each campus admin authenticates and receives a session scoped to their `campus_id`. Without auth, multi-tenancy has no data isolation.
+4. **Frontend** — campus switcher in the navbar for super-admin users. All dashboard, map, analytics, and log views filtered by the active campus context.
+
+Estimated effort: 2-3 days for a functional implementation; longer with a proper auth layer. Not in scope for the current build.
+
 **Manual incident submission**
 The one feature listed in the original requirements that is not fully present is a **single-incident manual submission form**. The decision to replace it with bulk Import was deliberate — dispatchers don't type individual incident reports during a shift, and the live EPD feed covers real-time data entry automatically. However, the spec lists it as a key feature and it is step 1 of the core product loop. The recommended fix is a lightweight "Report Incident" modal accessible from the Dashboard, which would satisfy the requirement without restoring a dedicated page.
 
