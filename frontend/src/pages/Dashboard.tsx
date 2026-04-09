@@ -405,67 +405,53 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Source filter pills */}
-            <div className="flex gap-1 flex-wrap">
-              {(['all','epd_live','uopd_csv','imported','manual'] as SourceFilter[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSourceFilter(s)}
-                  className={`text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors ${
-                    sourceFilter === s
-                      ? 'bg-green-700 text-white border-green-700'
-                      : 'bg-white text-gray-500 border-gray-300 hover:border-green-400'
-                  }`}
-                >
-                  {SOURCE_LABELS[s]}
-                </button>
-              ))}
-            </div>
+            {/* Filter bar — dropdowns */}
+            <div className="flex gap-2 flex-wrap items-center">
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value as SourceFilter)}
+                className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+              >
+                <option value="all">All Sources</option>
+                <option value="epd_live">EPD Live</option>
+                <option value="uopd_csv">Historical</option>
+                <option value="imported">Imported</option>
+                <option value="manual">Manual</option>
+              </select>
 
-            {/* Status filter pills */}
-            <div className="flex gap-1 flex-wrap">
-              {(['all','open','acknowledged','in-progress'] as StatusFilter[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors ${
-                    statusFilter === s
-                      ? 'bg-green-700 text-white border-green-700'
-                      : 'bg-white text-gray-500 border-gray-300 hover:border-green-400'
-                  }`}
-                >
-                  {s === 'all' ? 'All Statuses' : s === 'in-progress' ? 'In Progress' : s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+              >
+                <option value="all">All Statuses</option>
+                <option value="open">Open</option>
+                <option value="acknowledged">Acknowledged</option>
+                <option value="in-progress">In Progress</option>
+              </select>
 
-            {/* Severity filter pills */}
-            <div className="flex gap-1 flex-wrap">
-              {(['all','critical','high','medium','low'] as SeverityFilter[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSeverityFilter(s)}
-                  className={`text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors ${
-                    severityFilter === s
-                      ? 'bg-green-700 text-white border-green-700'
-                      : 'bg-white text-gray-500 border-gray-300 hover:border-green-400'
-                  }`}
-                >
-                  {s === 'all' ? 'All Severities' : s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
+              <select
+                value={severityFilter}
+                onChange={(e) => setSeverityFilter(e.target.value as SeverityFilter)}
+                className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+              >
+                <option value="all">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
 
-            {/* Sort dropdown */}
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-              className="text-[10px] font-semibold px-2 py-1 rounded-full border border-gray-300 text-gray-500 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors whitespace-nowrap bg-white"
-            >
-              <option value="severity">Sort: Severity</option>
-              <option value="oldest">Sort: Oldest First</option>
-              <option value="newest">Sort: Newest First</option>
-            </select>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+              >
+                <option value="severity">Sort: Severity</option>
+                <option value="oldest">Sort: Oldest First</option>
+                <option value="newest">Sort: Newest First</option>
+              </select>
+            </div>
           </div>
 
           {activeQueue.length === 0 ? (
