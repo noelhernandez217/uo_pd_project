@@ -44,16 +44,18 @@ function parseCSVRows(buffer) {
 async function parsePDFRows(buffer) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for PDF import')
 
+  const pdfParse = require('pdf-parse')
+  const parsed = await pdfParse(buffer)
+  const pdfText = parsed.text
+
   const client = new OpenAI()
-  const base64PDF = buffer.toString('base64')
 
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
     max_tokens: 4096,
     messages: [{
       role: 'user',
-      content: [
-        { type: 'text', text: `Extract all incident records from this campus safety / police dispatch log PDF.
+      content: `Extract all incident records from this campus safety / police dispatch log.
 Return ONLY a valid JSON array — no markdown, no explanation, no code fences.
 Each object must have exactly these fields:
 {
@@ -65,9 +67,10 @@ Each object must have exactly these fields:
   "disposition": "outcome or disposition (empty string if not present)"
 }
 Skip page headers, footers, totals rows, and any non-incident content.
-Return only the JSON array.` },
-        { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64PDF}` } },
-      ],
+Return only the JSON array.
+
+PDF TEXT:
+${pdfText}`,
     }],
   })
 
