@@ -30,19 +30,26 @@ function normalizeDate(str) {
 function parseCSVRows(buffer) {
   const raw = buffer.toString('utf8')
 
-  // Find the line index containing the actual column headers
-  // (skips title/metadata rows at the top of UOPD exports)
-  const lines = raw.split(/\r?\n/)
+  // Strip BOM if present
+  const cleaned = raw.replace(/^\uFEFF/, '')
+
+  // Find the line containing the actual column headers by looking for
+  // the first line that has commas and contains known header keywords.
+  // UOPD exports have 1-2 title rows before the real header row.
+  const lines = cleaned.split(/\r?\n/)
   const headerKeywords = ['nature', 'case', 'date', 'location', 'disposition']
-  let fromLine = 1
+  let headerIdx = 0
   for (let i = 0; i < Math.min(lines.length, 10); i++) {
     const lower = lines[i].toLowerCase()
-    const matches = headerKeywords.filter((k) => lower.includes(k)).length
-    if (matches >= 3) { fromLine = i + 1; break }
+    const matchCount = headerKeywords.filter((k) => lower.includes(k)).length
+    if (matchCount >= 3) { headerIdx = i; break }
   }
 
-  const records = parseCSV(raw, {
-    columns: true, skip_empty_lines: true, trim: true, from_line: fromLine,
+  // Rebuild the CSV starting from the header line
+  const csvFromHeader = lines.slice(headerIdx).join('\n')
+
+  const records = parseCSV(csvFromHeader, {
+    columns: true, skip_empty_lines: true, trim: true,
   })
   return records.map((r) => ({
     nature:        r['Nature']               || r['nature']                || '',
