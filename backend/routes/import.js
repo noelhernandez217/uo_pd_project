@@ -53,11 +53,17 @@ async function parsePDFRows(buffer) {
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
     max_tokens: 4096,
-    messages: [{
-      role: 'user',
-      content: `Extract all incident records from this campus safety / police dispatch log.
-Return ONLY a valid JSON array — no markdown, no explanation, no code fences.
-Each object must have exactly these fields:
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a data extraction assistant. Always respond with valid JSON only.',
+      },
+      {
+        role: 'user',
+        content: `Extract all incident records from this campus safety / police dispatch log.
+Return a JSON object with a single key "incidents" containing an array of records.
+Each record must have exactly these fields:
 {
   "nature": "incident type or description",
   "caseNumber": "case or report number (empty string if not present)",
@@ -67,15 +73,15 @@ Each object must have exactly these fields:
   "disposition": "outcome or disposition (empty string if not present)"
 }
 Skip page headers, footers, totals rows, and any non-incident content.
-Return only the JSON array.
 
 PDF TEXT:
 ${pdfText}`,
-    }],
+      },
+    ],
   })
 
-  const text = response.choices[0].message.content.trim().replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim()
-  const rows = JSON.parse(text)
+  const parsed2 = JSON.parse(response.choices[0].message.content)
+  const rows = parsed2.incidents ?? parsed2
 
   return rows
     .filter((r) => r.nature)
