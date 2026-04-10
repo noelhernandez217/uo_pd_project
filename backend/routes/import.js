@@ -41,47 +41,62 @@ function parseCSVRows(buffer) {
   })).filter((r) => r.nature)
 }
 
-async function parsePDFRows(buffer) {
-  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for PDF import')
+const EXTRACT_PROMPT = `Extract all incident records from this section of a campus safety / police log.
+Return a JSON object with a single key "incidents" containing an array of records.
+Each record must have exactly these fields:
+{ "nature": "", "caseNumber": "", "dateReported": "", "dateOccurred": "", "location": "", "disposition": "" }
+- dateReported: MM/DD/YY format
+- dateOccurred: MM/DD/YY @ HHMM format
+- disposition: outcome or status
+Skip headers, footers, page numbers, and non-incident rows.
+If there are no incidents in this section return { "incidents": [] }.`
 
-  const pdfParse = require('pdf-parse-fork')
-  const parsed = await pdfParse(buffer)
-  const pdfText = parsed.text
-
-  const client = new OpenAI()
-
+async function extractChunk(client, chunk) {
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
     max_tokens: 4096,
     response_format: { type: 'json_object' },
     messages: [
-      {
-        role: 'system',
-        content: 'You are a data extraction assistant. Always respond with valid JSON only.',
-      },
-      {
-        role: 'user',
-        content: `Extract all incident records from this campus safety / police dispatch log.
-Return a JSON object with a single key "incidents" containing an array of records.
-Each record must have exactly these fields:
-{
-  "nature": "incident type or description",
-  "caseNumber": "case or report number (empty string if not present)",
-  "dateReported": "date reported in MM/DD/YY format (empty string if not present)",
-  "dateOccurred": "date and time occurred in MM/DD/YY @ HHMM format (empty string if not present)",
-  "location": "location address",
-  "disposition": "outcome or disposition (empty string if not present)"
-}
-Skip page headers, footers, totals rows, and any non-incident content.
-
-PDF TEXT:
-${pdfText}`,
-      },
+      { role: 'system', content: 'You are a data extraction assistant. Always respond with valid JSON only.' },
+      { role: 'user', content: `${EXTRACT_PROMPT}\n\nTEXT:\n${chunk}` },
     ],
   })
+  const result = JSON.parse(response.choices[0].message.content)
+  return result.incidents ?? []
+}
 
-  const parsed2 = JSON.parse(response.choices[0].message.content)
-  const rows = parsed2.incidents ?? parsed2
+async function parsePDFRows(buffer) {
+  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for PDF import')
+
+  const pdfParse = require('pdf-parse-fork')
+  const parsed = await pdfParse(buffer)
+
+  // Split by page breaks so each chunk fits within output token limits
+  const pages = parsed.text.split(/\f/).filter((p) => p.trim().length > 50)
+
+  // Group pages into chunks of 3 to reduce API calls while staying under token limit
+  const chunkSize = 3
+  const chunks = []
+  for (let i = 0; i < pages.length; i += chunkSize) {
+    chunks.push(pages.slice(i, i + chunkSize).join('\n'))
+  }
+
+  const client = new OpenAI()
+  const allRows = []
+
+  for (const chunk of chunks) {
+    const rows = await extractChunk(client, chunk)
+    allRows.push(...rows)
+  }
+
+  // Deduplicate by caseNumber within the PDF itself
+  const seen = new Set()
+  const rows = allRows.filter((r) => {
+    if (!r.caseNumber) return true
+    if (seen.has(r.caseNumber)) return false
+    seen.add(r.caseNumber)
+    return true
+  })
 
   return rows
     .filter((r) => r.nature)
