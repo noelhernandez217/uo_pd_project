@@ -28,8 +28,21 @@ function normalizeDate(str) {
 }
 
 function parseCSVRows(buffer) {
-  const records = parseCSV(buffer.toString('utf8'), {
-    columns: true, skip_empty_lines: true, trim: true,
+  const raw = buffer.toString('utf8')
+
+  // Find the line index containing the actual column headers
+  // (skips title/metadata rows at the top of UOPD exports)
+  const lines = raw.split(/\r?\n/)
+  const headerKeywords = ['nature', 'case', 'date', 'location', 'disposition']
+  let fromLine = 1
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    const lower = lines[i].toLowerCase()
+    const matches = headerKeywords.filter((k) => lower.includes(k)).length
+    if (matches >= 3) { fromLine = i + 1; break }
+  }
+
+  const records = parseCSV(raw, {
+    columns: true, skip_empty_lines: true, trim: true, from_line: fromLine,
   })
   return records.map((r) => ({
     nature:        r['Nature']               || r['nature']                || '',
