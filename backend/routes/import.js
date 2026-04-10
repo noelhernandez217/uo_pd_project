@@ -44,7 +44,7 @@ function parseCSVRows(buffer) {
 async function parsePDFRows(buffer) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for PDF import')
 
-  const pdfParse = require('pdf-parse')
+  const pdfParse = require('pdf-parse-fork')
   const parsed = await pdfParse(buffer)
   const pdfText = parsed.text
 
