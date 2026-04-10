@@ -4,6 +4,7 @@ import SeverityBadge from '../components/SeverityBadge'
 import StatusBadge from '../components/StatusBadge'
 import IncidentDetail from '../components/IncidentDetail'
 import { useCampus } from '../context/CampusContext'
+import { IncidentLogSkeleton } from '../components/Skeleton'
 
 const SEVERITY_COLORS: Record<string, string> = {
   critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e',
@@ -247,7 +248,7 @@ export default function IncidentLog() {
 
       {/* Month groups */}
       {loading ? (
-        <div className="py-16 text-center text-gray-400">Loading incident log...</div>
+        <IncidentLogSkeleton />
       ) : (
         <div className="space-y-3">
           {monthGroups.map(([monthKey, monthIncidents]) => {

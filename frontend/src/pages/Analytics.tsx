@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { DashboardSkeleton } from '../components/Skeleton'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
@@ -80,7 +81,7 @@ export default function Analytics() {
     return sorted[0] ? { label: monthLabel(sorted[0][0]), count: sorted[0][1] } : null
   }, [incidents])
 
-  if (loading) return <div className="py-24 text-center text-gray-400">Loading analytics...</div>
+  if (loading) return <DashboardSkeleton />
   if (!trends)  return <div className="py-24 text-center text-gray-400">No data available.</div>
 
   return (
