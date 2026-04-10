@@ -467,7 +467,7 @@ export default function Dashboard() {
                   onClick={() => setSelected(incident)}
                   className={`rounded-xl border shadow-sm px-4 py-3 flex items-start gap-4 cursor-pointer hover:shadow-md transition-all ${
                     incident.status === 'in-progress'
-                      ? 'bg-purple-50 border-purple-200 hover:border-purple-400'
+                      ? 'bg-purple-50 border-purple-300 hover:border-purple-400 animate-pulse'
                       : incident.status === 'acknowledged'
                       ? 'bg-yellow-50 border-yellow-200 hover:border-yellow-400'
                       : 'bg-white border-gray-200 hover:border-green-300'
