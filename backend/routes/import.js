@@ -69,7 +69,16 @@ async function parsePDFRows(buffer) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for PDF import')
 
   const pdfParse = require('pdf-parse-fork')
-  const parsed = await pdfParse(buffer)
+  let parsed
+  try {
+    parsed = await pdfParse(buffer)
+  } catch (e) {
+    throw new Error('This PDF appears to be scanned or image-based and cannot be read as text. Please use the CSV export instead — the UOPD Clery log is available as both PDF and CSV.')
+  }
+
+  if (!parsed.text || parsed.text.trim().length < 100) {
+    throw new Error('No text could be extracted from this PDF. It may be a scanned document. Please use the CSV export instead.')
+  }
 
   // Split by page breaks so each chunk fits within output token limits
   const pages = parsed.text.split(/\f/).filter((p) => p.trim().length > 50)
