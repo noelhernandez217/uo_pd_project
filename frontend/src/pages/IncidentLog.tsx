@@ -75,32 +75,80 @@ export default function IncidentLog() {
       dateTo   && `To: ${dateTo}`,
     ].filter(Boolean).join(' · ') || 'All incidents'
 
-    const rows = filteredIncidents.map((i) => `
-      <tr>
-        <td>${i.caseNumber || '—'}</td>
-        <td>${i.nature}</td>
-        <td>${i.location || '—'}</td>
-        <td>${i.dateOccurred?.slice(0, 16) || '—'}</td>
-        <td>${i.severity.toUpperCase()}</td>
-        <td>${i.status}</td>
-      </tr>`).join('')
+    // Build month groups from filtered incidents
+    const groups: Record<string, Incident[]> = {}
+    filteredIncidents.forEach((i) => {
+      const key = i.dateOccurred?.slice(0, 7) ?? 'unknown'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(i)
+    })
+    const sortedGroups = Object.entries(groups).sort(([a], [b]) => b.localeCompare(a))
 
-    const html = `<!DOCTYPE html><html><head><title>Incident Log — ${config.campusName}</title>
+    const severityColor: Record<string, string> = {
+      critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e',
+    }
+
+    const monthSections = sortedGroups.map(([key, incidents]) => {
+      const label = monthLabel(key)
+      const counts = { critical: 0, high: 0, medium: 0, low: 0 }
+      incidents.forEach((i) => { if (i.severity in counts) counts[i.severity as keyof typeof counts]++ })
+
+      const summaryPills = (['critical','high','medium','low'] as const)
+        .filter((s) => counts[s] > 0)
+        .map((s) => `<span style="display:inline-block;margin-right:6px;font-size:9px;font-weight:700;color:${severityColor[s]};text-transform:uppercase;">${counts[s]} ${s}</span>`)
+        .join('')
+
+      const rows = incidents.map((i) => `
+        <tr>
+          <td style="font-family:monospace;color:#6b7280;font-size:9px">${i.caseNumber || '—'}</td>
+          <td style="font-weight:500">${i.nature}</td>
+          <td style="color:#6b7280">${i.location || '—'}</td>
+          <td style="color:#6b7280;white-space:nowrap">${i.dateOccurred?.slice(0, 16) || '—'}</td>
+          <td style="font-weight:700;color:${severityColor[i.severity]};text-transform:uppercase;font-size:9px">${i.severity}</td>
+          <td style="color:#6b7280;text-transform:capitalize">${i.status}</td>
+        </tr>`).join('')
+
+      return `
+        <div class="month-section">
+          <div class="month-header">
+            <span class="month-title">${label}</span>
+            <span class="month-count">${incidents.length} incident${incidents.length !== 1 ? 's' : ''}</span>
+            <span class="month-pills">${summaryPills}</span>
+          </div>
+          <table>
+            <thead><tr>
+              <th>Case #</th><th>Type</th><th>Location</th><th>Date</th><th>Severity</th><th>Status</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`
+    }).join('')
+
+    const html = `<!DOCTYPE html><html><head>
+    <title>Incident Log — ${config.campusName}</title>
     <style>
-      body { font-family: system-ui, sans-serif; padding: 24px; font-size: 12px; }
-      h1 { font-size: 17px; margin-bottom: 4px; }
-      p { color: #666; margin: 0 0 14px; font-size: 12px; }
-      table { width: 100%; border-collapse: collapse; }
-      th { text-align: left; font-size: 10px; text-transform: uppercase; color: #999; padding: 4px 8px; border-bottom: 2px solid #e5e7eb; }
-      td { padding: 4px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+      @page { size: landscape; margin: 16mm; }
+      * { box-sizing: border-box; }
+      body { font-family: system-ui, sans-serif; font-size: 10px; color: #111; }
+      .report-header { margin-bottom: 16px; border-bottom: 2px solid #111; padding-bottom: 8px; }
+      .report-header h1 { font-size: 15px; margin: 0 0 2px; }
+      .report-header p { margin: 0; color: #6b7280; font-size: 9px; }
+      .month-section { margin-bottom: 20px; page-break-inside: avoid; }
+      .month-header { display: flex; align-items: center; gap: 10px; background: #f3f4f6; padding: 5px 8px; margin-bottom: 0; border-radius: 4px 4px 0 0; border: 1px solid #e5e7eb; border-bottom: none; }
+      .month-title { font-size: 11px; font-weight: 700; color: #111; }
+      .month-count { font-size: 9px; color: #6b7280; background: #e5e7eb; padding: 1px 6px; border-radius: 99px; }
+      .month-pills { margin-left: 4px; }
+      table { width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; }
+      th { text-align: left; font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; padding: 3px 6px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+      td { padding: 3px 6px; border-bottom: 1px solid #f3f4f6; font-size: 10px; }
+      tr:last-child td { border-bottom: none; }
       tr:nth-child(even) td { background: #fafafa; }
     </style></head><body>
-    <h1>Incident Log — ${config.campusName}</h1>
-    <p>Printed ${now.toLocaleString()} · ${filterDesc} · ${filteredIncidents.length} records</p>
-    <table>
-      <thead><tr><th>Case #</th><th>Type</th><th>Location</th><th>Date</th><th>Severity</th><th>Status</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+    <div class="report-header">
+      <h1>Incident Log — ${config.campusName}</h1>
+      <p>Printed ${now.toLocaleString()} &nbsp;·&nbsp; ${filterDesc} &nbsp;·&nbsp; ${filteredIncidents.length} records across ${sortedGroups.length} month${sortedGroups.length !== 1 ? 's' : ''}</p>
+    </div>
+    ${monthSections}
     </body></html>`
 
     const w = window.open('', '_blank')
